@@ -37,7 +37,7 @@ func TestProfile(t *testing.T) {
 			engine := gin.Default()
 
 			RegisterUserRoutes(engine)
-			req, err := http.NewRequest(http.MethodGet, "/user/profile", nil)
+			req, err := http.NewRequest(http.MethodGet,tc.route, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

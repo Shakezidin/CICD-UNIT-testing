@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/shaikhzidhin/middleware"
 )
 
 func RegisterUserRoutes(c *gin.Engine) {
@@ -31,7 +30,6 @@ func RegisterUserRoutes(c *gin.Engine) {
 	user.GET("/home/banner", BannerShowing)
 	user.GET("/home/banner/hotel", ViewSpecificHotel)
 	user.POST("/home/search", Searching)
-	user.POST("/home/search/hotel", SearchHotelByName)
 
 	// Room routes
 	user.GET("/home/rooms", RoomsView)
@@ -39,15 +37,15 @@ func RegisterUserRoutes(c *gin.Engine) {
 	user.POST("/home/rooms/filter", RoomFilter)
 
 	// Contact routes
-	user.POST("/home/contact", middleware.UserAuthMiddleware, SubmitContact)
+	user.POST("/home/contact", SubmitContact)
 
 	// Booking Management routes
-	user.GET("/home/room/book", middleware.UserAuthMiddleware, CalculateAmountForDays)
-	user.GET("/coupons/view", middleware.UserAuthMiddleware, ViewNonBlockedCoupons)
-	user.GET("/coupon/apply", middleware.UserAuthMiddleware, ApplyCoupon)
-	user.GET("/wallet", middleware.UserAuthMiddleware, ViewWallet)
-	user.GET("/wallet/apply", middleware.UserAuthMiddleware, ApplyWallet)
-	user.GET("/payat/hotel", middleware.UserAuthMiddleware, OfflinePayment)
+	user.GET("/home/room/book", CalculateAmountForDays)
+	user.GET("/coupons/view", ViewNonBlockedCoupons)
+	user.GET("/coupon/apply", ApplyCoupon)
+	user.GET("/wallet", ViewWallet)
+	user.GET("/wallet/apply", ApplyWallet)
+	user.GET("/payat/hotel", OfflinePayment)
 
 	// Razorpay routes
 	user.GET("/online/payment", RazorpayPaymentGateway)

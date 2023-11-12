@@ -60,9 +60,9 @@ func Login(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	token := tokenString
+
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("UserAuth", token, 3600*24*30, "", "", false, true)
+	c.SetCookie("UserAuth", tokenString, 3600*24*30, "", "", false, true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		c.Abort()
@@ -75,7 +75,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"loginStatus": "Success","tocken":token})
+	c.JSON(200, gin.H{"loginStatus": "Success", "tocken": tokenString})
 }
 
 // ForgetPassword handles the user's password recovery request.

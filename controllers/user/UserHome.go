@@ -50,7 +50,7 @@ func Home(c *gin.Context) {
 	for _, hotel := range hotels {
 
 		// Retrieve rooms for the current hotel
-		hotelRooms, err := fetchRooms(hotel.ID, true, false, true, Init.DB)
+		hotelRooms, err := fetchRooms(hotel.ID,Init.DB)
 		if err != nil {
 			c.JSON(400, gin.H{"Error": "Error fetching rooms"})
 			return

@@ -35,7 +35,7 @@ func TestHome(t *testing.T) {
 				return hotels, nil
 			}
 
-			fetchRooms = func(hotelId uint, isAvailable, isBlocked, adminApproval bool, db *gorm.DB) ([]models.Rooms, error) {
+			fetchRooms = func(hotelId uint,db *gorm.DB) ([]models.Rooms, error) {
 				var rooms []models.Rooms
 				return rooms, nil
 			}

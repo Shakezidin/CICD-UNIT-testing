@@ -2,7 +2,6 @@ package user
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"time"
@@ -111,19 +110,16 @@ func SignupVerification(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "falseee", "error": "Error getting user data from Redis client"})
 			return
 		}
-		fmt.Println(jsonData)
 		err = json.Unmarshal([]byte(jsonData), &userData)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error binding Redis JSON data to user variable"})
 			return
 		}
 
-		fmt.Println(userData)
-
 		if userData.ReferralCode == "" {
 			userData.ReferralCode = generateRandomString(10)
 			// Create user and save transaction history and wallet balance
-			err := create(&userData,Init.DB)
+			err := create(&userData, Init.DB)
 			if err != nil {
 				c.JSON(400, gin.H{"Error": "USer creation Error"})
 				return

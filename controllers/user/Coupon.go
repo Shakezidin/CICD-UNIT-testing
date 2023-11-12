@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,6 +10,16 @@ import (
 	Auth "github.com/shaikhzidhin/Auth"
 	Init "github.com/shaikhzidhin/initializer"
 	"github.com/shaikhzidhin/models"
+)
+
+var (
+	Couponref       = models.Coupon{}
+	usedcouponref   = models.UsedCoupon{}
+	walletref       = models.Wallet{}
+	fetchAllCoupon  = Couponref.FetchAllCoupon
+	fetchCouponById = Couponref.FetchCouponById
+	fetchUsedCoupon = usedcouponref.FetchUsedCoupon
+	fetchWallet     = walletref.FetchWallet
 )
 
 // CalculateAmountForDays calculates the amount for booking based on selected dates and room.
@@ -26,20 +35,19 @@ func CalculateAmountForDays(c *gin.Context) {
 		return
 	}
 
-	err = Init.ReddisClient.Set(context.Background(), "roomid", roomIDStr, 1*time.Hour).Err()
+	err = setRedis("roomid", roomIDStr, 1*time.Hour)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting in Redis client"})
 		return
 	}
 
-	fromdateStr, err := Init.ReddisClient.Get(context.Background(), "fromdate").Result()
-	fmt.Println(fromdateStr)
+	fromdateStr, err := getRedis("fromdate")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error getting 'fromdate' from Redis client"})
 		return
 	}
 
-	todateStr, err := Init.ReddisClient.Get(context.Background(), "todate").Result()
+	todateStr, err := getRedis("todate")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error getting 'todate' from Redis client"})
 		return
@@ -60,8 +68,8 @@ func CalculateAmountForDays(c *gin.Context) {
 	duration := toDate.Sub(fromDate)
 	days := int(duration.Hours() / 24)
 
-	var room models.Rooms
-	if err := Init.DB.Where("id = ?", roomID).First(&room).Error; err != nil {
+	room, err := fetchRoomById(uint(roomID), Init.DB)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Error while fetching rooms"})
 		return
 	}
@@ -72,7 +80,7 @@ func CalculateAmountForDays(c *gin.Context) {
 	GSTAmount := (GSTPercentage / 100.0) * float64(totalPrice)
 	payableAmount := totalPrice + int(GSTAmount)
 
-	err = Init.ReddisClient.Set(context.Background(), "Amount", payableAmount, 1*time.Hour).Err()
+	err = setRedis("Amount", payableAmount, 1*time.Hour)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting in Redis client"})
 		return
@@ -92,8 +100,9 @@ func CalculateAmountForDays(c *gin.Context) {
 func ViewNonBlockedCoupons(c *gin.Context) {
 	var coupons []models.Coupon
 
-	if err := Init.DB.Where("is_block = ?", false).Find(&coupons).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Error while fetching coupons"})
+	coupons, err := fetchAllCoupon(Init.DB)
+	if err != nil {
+		c.JSON(400, gin.H{"Error": "Coupon fetching error"})
 		return
 	}
 
@@ -102,23 +111,24 @@ func ViewNonBlockedCoupons(c *gin.Context) {
 
 // ApplyCoupon applies a coupon to the booking.
 func ApplyCoupon(c *gin.Context) {
-	couponID, _ := strconv.Atoi(c.Query("id"))
-	amountStr, err := Init.ReddisClient.Get(context.Background(), "Amount").Result()
+	couponID, err := strconv.Atoi(c.Query("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"Error": "query id error"})
+		return
+	}
+	amountStr, err := getRedis("Amount")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error getting 'Amount' from Redis client: " + err.Error()})
 		return
 	}
 
-	amount, err := strconv.Atoi(amountStr)
-	if err != nil {
+	amount, errrr := strconv.Atoi(amountStr)
+	if errrr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "string conversion"})
 		return
 	}
 
-	CouponIDstr, err := Init.ReddisClient.Get(context.Background(), "couponID").Result()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "No coupon used"})
-	}
+	CouponIDstr, _ := getRedis("couponID")
 	if CouponIDstr != "" {
 		oldcouponID, err := strconv.Atoi(CouponIDstr)
 		if err != nil {
@@ -131,8 +141,6 @@ func ApplyCoupon(c *gin.Context) {
 			return
 		}
 	}
-	var coupon models.Coupon
-	var usedCoupon models.UsedCoupon
 
 	header := c.Request.Header.Get("Authorization")
 	username, err := Auth.Trim(header)
@@ -141,14 +149,15 @@ func ApplyCoupon(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := Init.DB.Where("user_name = ?", username).First(&user).Error; err != nil {
-		c.JSON(400, gin.H{"error": "user fetching error"})
+	user, errr := fetchUser(username, Init.DB)
+	if errr != nil {
+		c.JSON(400, gin.H{"Error": "User not found"})
 		return
 	}
 
-	if err := Init.DB.Where("id = ?", couponID).First(&coupon).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while fetching coupon"})
+	coupon, errrrr := fetchCouponById(uint(couponID), Init.DB)
+	if errrrr != nil {
+		c.JSON(400, gin.H{"Error": "Fetching coupon by id error"})
 		return
 	}
 
@@ -168,25 +177,25 @@ func ApplyCoupon(c *gin.Context) {
 		return
 	}
 
-	result := Init.DB.Where("coupon_id = ? AND user_id = ?", coupon.ID, user.ID).First(&usedCoupon)
-	if result.RowsAffected > 0 {
+	result, err := fetchUsedCoupon(coupon.ID, user.ID, Init.DB)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Coupon fetching error"})
+		return
+	}
+	if result != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Coupon already used"})
 		return
 	}
 
 	updatedTotal := amount - coupon.Discount
-	err = Init.ReddisClient.Set(context.Background(), "Amount", updatedTotal, 1*time.Hour).Err()
-	err = Init.ReddisClient.Set(context.Background(), "couponID", couponID, 1*time.Hour).Err()
+	err = setRedis("Amount", updatedTotal, 1*time.Hour)
+	err = setRedis("couponID", couponID, 1*time.Hour)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting in Redis client"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":         "coupon applied",
-		"couponDiscount": coupon.Discount,
-		"current total":  updatedTotal,
-	})
+	c.Status(http.StatusOK)
 }
 
 // ViewWallet retrieves user's wallet information.
@@ -198,21 +207,20 @@ func ViewWallet(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := Init.DB.Where("user_name = ?", username).First(&user).Error; err != nil {
+	user, err := fetchUser(username, Init.DB)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while fetching user"})
 		return
 	}
 
-	var wallet models.Wallet
-
-	if err := Init.DB.Where("user_id = ?", user.ID).First(&wallet).Error; err != nil {
+	wallet, err := fetchWallet(user.ID, Init.DB)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while fetching wallet"})
 		return
 	}
 
-	err = Init.ReddisClient.Set(context.Background(), "WalletId", wallet.ID, 1*time.Hour).Err()
-	if err != nil {
+	err = setRedis("WalletId", wallet.ID, 1*time.Hour)
+		if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting in Redis client"})
 		return
 	}

@@ -9,14 +9,14 @@ import (
 	"github.com/shaikhzidhin/models"
 )
 
+var createcontact = models.Createcontact
+
 // SubmitContact handles submitting a contact message to the admin.
 func SubmitContact(c *gin.Context) {
-	var message struct {
-		Message string `json:"message"`
-	}
+	var message = models.Message{}
 
 	if err := c.ShouldBindJSON(&message); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Binding error"})
 		return
 	}
 
@@ -27,19 +27,20 @@ func SubmitContact(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := Init.DB.Where("user_name = ?", username).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while fetching user"})
+	user, err := fetchUser(username, Init.DB)
+	if err != nil {
+		c.JSON(400, gin.H{"Error": "User Fetching error"})
 		return
 	}
 
-	contact := models.Contact{
+	contact := &models.Contact{
 		Message: message.Message,
 		UserID:  user.ID,
 	}
 
-	if err := Init.DB.Create(&contact).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	errr := createcontact(contact, Init.DB)
+	if errr != nil {
+		c.JSON(400, gin.H{"Error": "Message creation error"})
 		return
 	}
 

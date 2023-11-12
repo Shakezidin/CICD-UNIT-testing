@@ -78,3 +78,10 @@ type OtpCredentials struct {
 	Email string `json:"email"`
 	Otp   string `json:"otp"`
 }
+
+func (wallet *Wallet) FetchWallet(userId uint, db *gorm.DB) (*Wallet, error) {
+	if err := db.Where("user_id = ?", userId).First(&wallet).Error; err != nil {
+		return nil, err
+	}
+	return wallet, nil
+}

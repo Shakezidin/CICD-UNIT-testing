@@ -1,7 +1,6 @@
 package user
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shaikhzidhin/initializer"
 	"github.com/shaikhzidhin/models"
+)
+
+var (
+	hotelref             = models.Hotels{}
+	roomref              = models.Rooms{}
+	categoryref          = models.RoomCategory{}
+	fetchAvailableHotels = hotelref.FetchAvailableHotels
+	fetchAvailableRooms  = roomref.FetchingAvailableRooms
+	fetchAllRooms        = roomref.FetchAllRooms
+	fetchRoomCategory    = categoryref.FetchRoomCategory
+	fetchRoomById        = roomref.FetchRoomById
 )
 
 // Searching helps to find available rooms and hotels in a loacation
@@ -31,21 +41,22 @@ func Searching(c *gin.Context) {
 		return
 	}
 
-	err = initializer.ReddisClient.Set(context.Background(), "fromdate", req.FromDate, 1*time.Hour).Err()
+	err = setRedis("fromdate", req.FromDate, 1*time.Hour)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting 'fromdate' in Redis client"})
 		return
 	}
-	err = initializer.ReddisClient.Set(context.Background(), "todate", req.ToDate, 1*time.Hour).Err()
+
+	err = setRedis("todate", req.ToDate, 1*time.Hour)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting 'todate' in Redis client"})
 		return
 	}
 
 	// Fetch hotels that match the location or place
-	var hotels []models.Hotels
-	if err := initializer.DB.Where("city = ?", req.LocOrPlace).Find(&hotels).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error fetching hotels"})
+	hotels, err := fetchAvailableHotels(req.LocOrPlace, initializer.DB)
+	if err != nil {
+		c.JSON(400, gin.H{"Error": "Fetching available hotel eror"})
 		return
 	}
 
@@ -54,14 +65,7 @@ func Searching(c *gin.Context) {
 
 	for _, hotel := range hotels {
 		// Fetch available rooms for the hotel
-		var availableRooms []models.Rooms
-		err := initializer.DB.Where("hotels_id = ? AND (available_rooms.room_id IS NULL OR ? > available_rooms.check_out OR ? < available_rooms.check_in)",
-			hotel.ID, fromDate, toDate).Where("adults >= ? AND children >= ? AND is_blocked = ? AND admin_approval = ?", req.NumberOfAdults, req.NumberOfChildren, false, true).
-			Joins("LEFT JOIN available_rooms ON rooms.id = available_rooms.room_id").
-			Joins("LEFT JOIN room_categories ON rooms.room_category_id = room_categories.id").
-			Preload("RoomCategory").
-			Find(&availableRooms).Error
-
+		availableRooms, err := fetchAvailableRooms(hotel.ID, fromDate, toDate, req.NumberOfAdults, req.NumberOfChildren, initializer.DB)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Error fetching rooms for the hotel"})
 			return
@@ -109,12 +113,12 @@ func Searching(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"hotels": hotels, "available rooms and counts": hotelDetails})
+	c.JSON(http.StatusOK, gin.H{"hotels": "hotels", "available rooms and counts": "hotelDetails"})
 }
 
 // RoomsView returns a list of rooms for viewing.
 func RoomsView(c *gin.Context) {
-	page := c.DefaultQuery("page", "1")
+	page := c.Query("page")
 	pageInt, err := strconv.Atoi(page)
 	if err != nil || pageInt < 1 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid page value"})
@@ -123,26 +127,19 @@ func RoomsView(c *gin.Context) {
 	limit := 10
 	skip := (pageInt - 1) * limit
 
-	var rooms []models.Rooms
-	var categories []models.RoomCategory
-
-	if err := initializer.DB.Preload("Cancellation").Preload("Hotels").Preload("RoomCategory").
-		Offset(skip).Limit(limit).
-		Where("is_available = ? AND is_blocked = ? AND admin_approval = ?", true, false, true).
-		Find(&rooms).Error; err != nil {
+	_, errr := fetchAllRooms(skip, limit, initializer.DB)
+	if errr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 
-	if err := initializer.DB.Find(&categories).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+	_, errrr := fetchRoomCategory(initializer.DB)
+	if errrr != nil {
+		c.JSON(400, gin.H{"error": "Catagory fetching error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"rooms":      rooms,
-		"categories": categories,
-	})
+	c.JSON(http.StatusOK, gin.H{"rooms": "rooms", "categories": "categories"})
 }
 
 // RoomDetails returns details of a specific room.
@@ -157,13 +154,11 @@ func RoomDetails(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid room ID"})
 		return
 	}
-	var room models.Rooms
-
-	if err := initializer.DB.Preload("Hotels").Preload("Cancellation").Preload("RoomCategory").
-		First(&room, uint(roomID)).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+	_, errr := fetchRoomById(uint(roomID), initializer.DB)
+	if errr != nil {
+		c.JSON(400, gin.H{"Error": "Room not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"room": room})
+	c.JSON(http.StatusOK, gin.H{"room": "room"})
 }
