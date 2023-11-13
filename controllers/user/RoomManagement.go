@@ -127,19 +127,19 @@ func RoomsView(c *gin.Context) {
 	limit := 10
 	skip := (pageInt - 1) * limit
 
-	_, errr := fetchAllRooms(skip, limit, initializer.DB)
+	rooms, errr := fetchAllRooms(skip, limit, initializer.DB)
 	if errr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 
-	_, errrr := fetchRoomCategory(initializer.DB)
+	categories, errrr := fetchRoomCategory(initializer.DB)
 	if errrr != nil {
 		c.JSON(400, gin.H{"error": "Catagory fetching error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"rooms": "rooms", "categories": "categories"})
+	c.JSON(http.StatusOK, gin.H{"rooms": rooms, "categories": categories})
 }
 
 // RoomDetails returns details of a specific room.
@@ -154,11 +154,11 @@ func RoomDetails(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid room ID"})
 		return
 	}
-	_, errr := fetchRoomById(uint(roomID), initializer.DB)
+	room, errr := fetchRoomById(uint(roomID), initializer.DB)
 	if errr != nil {
 		c.JSON(400, gin.H{"Error": "Room not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"room": "room"})
+	c.JSON(http.StatusOK, gin.H{"room": room})
 }
