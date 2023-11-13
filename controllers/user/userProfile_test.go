@@ -21,7 +21,7 @@ func TestProfile(t *testing.T) {
 		route       string
 		errorResult map[string]string
 	}{{
-		name:        "Success",
+		name:        "Successs",
 		route:       "/user/profile",
 		errorResult: nil,
 	}}
