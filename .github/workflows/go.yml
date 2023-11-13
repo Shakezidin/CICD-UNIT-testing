@@ -40,5 +40,5 @@ jobs:
             echo "No existing process found"
           fi
 
-      - name: Start new process
-        run: go run main.go
+      - name: Start new process in the background
+        run: go run main.go &
