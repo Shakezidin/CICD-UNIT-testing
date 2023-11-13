@@ -1,4 +1,4 @@
-# This workflow will build a Golang project
+# This workflow will build and run a Golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
 name: icrode-booking
@@ -28,3 +28,17 @@ jobs:
 
       - name: env file building
         run: echo -e "${{ secrets.EVIRONMENT_VARIABLE }}" > .env
+
+      - name: Find and stop existing process
+        run: |
+          PID=$(pgrep -f "go run main.go")
+          if [ -n "$PID" ]; then
+            echo "Stopping existing process with PID $PID"
+            kill $PID
+            sleep 2 # Wait for the process to stop
+          else
+            echo "No existing process found"
+          fi
+
+      - name: Start new process
+        run: go run main.go &
