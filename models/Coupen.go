@@ -34,7 +34,7 @@ func (coupon *Coupon) FetchAllCoupon(db *gorm.DB) ([]Coupon, error) {
 }
 
 func (coupon *Coupon) FetchCouponById(couponId uint, db *gorm.DB) (*Coupon, error) {
-	if err := db.Where("is_block = ? And coupon_ID = ?", false, couponId).First(coupon).Error; err != nil {
+	if err := db.Where("is_block = ? And id = ?", false, couponId).First(coupon).Error; err != nil {
 		return nil, err
 	}
 	return coupon, nil
