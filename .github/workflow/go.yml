@@ -25,3 +25,23 @@ jobs:
 
     - name: go testing
       run: go test -v ./...
+
+      deploy:
+  runs-on: ubuntu-latest
+  needs: build
+  steps:
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production"
+
+        # SSH into the production server
+        ssh Shaikh@icrode-booking.online
+          cd /path/to/your/app
+
+          # Pull the latest changes from the repository
+          git pull
+          
+          npm install
+
+          go run main.go
+     

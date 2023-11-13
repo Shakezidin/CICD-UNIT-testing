@@ -1,7 +1,6 @@
 package user
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,10 +15,14 @@ var (
 	Couponref       = models.Coupon{}
 	usedcouponref   = models.UsedCoupon{}
 	walletref       = models.Wallet{}
+	transaction     = models.Transaction{}
 	fetchAllCoupon  = Couponref.FetchAllCoupon
 	fetchCouponById = Couponref.FetchCouponById
 	fetchUsedCoupon = usedcouponref.FetchUsedCoupon
 	fetchWallet     = walletref.FetchWallet
+	fetchWalletByID = walletref.FetchWalletById
+	saveWallet      = walletref.SaveWallet
+	createwallet          = transaction.Create
 )
 
 // CalculateAmountForDays calculates the amount for booking based on selected dates and room.
@@ -220,7 +223,7 @@ func ViewWallet(c *gin.Context) {
 	}
 
 	err = setRedis("WalletId", wallet.ID, 1*time.Hour)
-		if err != nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting in Redis client"})
 		return
 	}
@@ -230,7 +233,7 @@ func ViewWallet(c *gin.Context) {
 
 // ApplyWallet applies user's wallet balance.
 func ApplyWallet(c *gin.Context) {
-	amountStr, err := Init.ReddisClient.Get(context.Background(), "Amount").Result()
+	amountStr, err := getRedis("Amount")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error getting 'amount' from Redis client"})
 		return
@@ -240,7 +243,7 @@ func ApplyWallet(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "string conversion"})
 		return
 	}
-	walletIDStr, err := Init.ReddisClient.Get(context.Background(), "WalletId").Result()
+	walletIDStr, err := getRedis("WalletId")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error getting 'walletId' from Redis client"})
 		return
@@ -251,8 +254,8 @@ func ApplyWallet(c *gin.Context) {
 		return
 	}
 
-	var wallet models.Wallet
-	if err := Init.DB.Where("id = ?", uint(walletID)).First(&wallet).Error; err != nil {
+	wallet, err := fetchWalletByID(uint(walletID), Init.DB)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while fetching wallet"})
 		return
 	}
@@ -271,24 +274,25 @@ func ApplyWallet(c *gin.Context) {
 	}
 	amount = amount - wallet.Balance
 	wallet.Balance = balance
-	if err := Init.DB.Save(&wallet).Error; err != nil {
+	errr := saveWallet(Init.DB)
+	if errr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while updating wallet"})
 		return
 	}
 
-	var transaction models.Transaction
 
 	transaction.Date = time.Now()
 	transaction.Details = "Booked room in"
 	transaction.Amount = amount
 	transaction.UserID = wallet.UserID
 
-	if err := Init.DB.Create(&transaction).Error; err != nil {
+	errrr := createwallet(Init.DB)
+	if errrr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "transaction adding error"})
 		return
 	}
 
-	err = Init.ReddisClient.Set(context.Background(), "Amount", amount, 1*time.Hour).Err()
+	err = setRedis("Amount", amount, 1*time.Hour)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error inserting in Redis client"})
 		return

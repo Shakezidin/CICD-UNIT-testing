@@ -153,3 +153,94 @@ func TestApplyCoupon(t *testing.T) {
 		})
 	}
 }
+
+func TestViewWallet(t *testing.T) {
+	test := []struct {
+		name        string
+		route       string
+		errorResult map[string]string
+	}{{
+		name:        "ViewWalletSuccess",
+		route:       "/user/wallet",
+		errorResult: nil,
+	}}
+	for _, tc := range test {
+		t.Run(tc.name, func(t *testing.T) {
+			fetchUser = func(val string, db *gorm.DB) (*models.User, error) {
+				return &user, nil
+			}
+			fetchWallet = func(userId uint, db *gorm.DB) (*models.Wallet, error) {
+				return &walletref, nil
+			}
+			gin.SetMode(gin.TestMode)
+			engine := gin.Default()
+			RegisterUserRoutes(engine)
+			w := httptest.NewRecorder()
+			req, err := http.NewRequest(http.MethodGet, tc.route, nil)
+			if err != nil {
+				require.NoError(t, err)
+			}
+			req.Header.Set("Authorization", authToken)
+			engine.ServeHTTP(w, req)
+			if tc.errorResult != nil {
+				errReslt, err := json.Marshal(tc.errorResult)
+				if err != nil {
+					require.NoError(t, err)
+				}
+				require.Equal(t, w.Body.String(), string(errReslt))
+			} else {
+				require.Equal(t, w.Code, 200)
+			}
+		})
+	}
+}
+
+func TestApplyWallet(t *testing.T) {
+	test := []struct {
+		name        string
+		route       string
+		errorResult map[string]string
+	}{{
+		name:        "Applaywallet Success",
+		route:       "/user/wallet/apply",
+		errorResult: nil,
+	}}
+	for _, tc := range test {
+		getRedis = func(key string) (string, error) {
+			return "500", nil
+		}
+		fetchWalletByID = func(walletId uint, db *gorm.DB) (*models.Wallet, error) {
+			var wallet models.Wallet
+			wallet.Balance = 500
+			return &wallet, nil
+		}
+		saveWallet = func(db *gorm.DB) error {
+			return nil
+		}
+		setRedis = func(key string, value any, expirationTime time.Duration) error {
+			return nil
+		}
+		createwallet = func(db *gorm.DB) error {
+			return nil
+		}
+		gin.SetMode(gin.TestMode)
+		engine := gin.Default()
+		RegisterUserRoutes(engine)
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodGet, tc.route, nil)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		req.Header.Set("Authorization", authToken)
+		engine.ServeHTTP(w, req)
+		if tc.errorResult != nil {
+			errReslt, err := json.Marshal(tc.errorResult)
+			if err != nil {
+				require.NoError(t, err)
+			}
+			require.Equal(t, w.Body.String(), string(errReslt))
+		} else {
+			require.Equal(t, w.Code, 200)
+		}
+	}
+}

@@ -74,6 +74,13 @@ type Transaction struct {
 	UserID  uint
 }
 
+func (transaction *Transaction) Create(db *gorm.DB) error {
+	if err := db.Create(&transaction).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 type OtpCredentials struct {
 	Email string `json:"email"`
 	Otp   string `json:"otp"`
@@ -84,4 +91,18 @@ func (wallet *Wallet) FetchWallet(userId uint, db *gorm.DB) (*Wallet, error) {
 		return nil, err
 	}
 	return wallet, nil
+}
+
+func (wallet *Wallet) FetchWalletById(walletId uint, db *gorm.DB) (*Wallet, error) {
+	if err := db.Where("id = ? = ?", walletId).First(&wallet).Error; err != nil {
+		return nil, err
+	}
+	return wallet, nil
+}
+
+func (wallet *Wallet) SaveWallet(db *gorm.DB) error {
+	if err := db.Save(&wallet).Error; err != nil {
+		return err
+	}
+	return nil
 }
