@@ -27,4 +27,4 @@ jobs:
         run: go test -v ./...
 
       - name: env file building
-        run: echo -e "${{ secrets.environment_variable }}" > .env
+        run: echo -e "${{ secrets.EVIRONMENT_VARIABLE }}" > .env
