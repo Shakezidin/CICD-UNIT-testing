@@ -22,7 +22,7 @@ var (
 	fetchWallet     = walletref.FetchWallet
 	fetchWalletByID = walletref.FetchWalletById
 	saveWallet      = walletref.SaveWallet
-	createwallet          = transaction.Create
+	createwallet    = transaction.Create
 )
 
 // CalculateAmountForDays calculates the amount for booking based on selected dates and room.
@@ -194,7 +194,11 @@ func ApplyCoupon(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{
+		"status":         "coupon applied",
+		"couponDiscount": coupon.Discount,
+		"current total":  updatedTotal,
+	})
 }
 
 // ViewWallet retrieves user's wallet information.
@@ -275,7 +279,6 @@ func ApplyWallet(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while updating wallet"})
 		return
 	}
-
 
 	transaction.Date = time.Now()
 	transaction.Details = "Booked room in"
