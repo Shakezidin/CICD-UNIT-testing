@@ -113,7 +113,7 @@ func Searching(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"hotels": "hotels", "available rooms and counts": "hotelDetails"})
+	c.JSON(http.StatusOK, gin.H{"hotels": "hotels", "available rooms and counts": hotelDetails})
 }
 
 // RoomsView returns a list of rooms for viewing.
