@@ -27,13 +27,13 @@ func Profile(c *gin.Context) {
 		return
 	}
 
-	_, errr := fetchUser(username, Init.DB)
+	user, errr := fetchUser(username, Init.DB)
 	if errr != nil {
 		c.JSON(400, gin.H{"Error": "Fetching user error"})
 		return
 	}
 
-	c.JSON(200, gin.H{"Status": "Success"})
+	c.JSON(200, gin.H{"Status": "Success","User":user})
 }
 
 // ProfileEdit handles editing user profile.
