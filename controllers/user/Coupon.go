@@ -180,11 +180,7 @@ func ApplyCoupon(c *gin.Context) {
 		return
 	}
 
-	result, err := fetchUsedCoupon(coupon.ID, user.ID, Init.DB)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Coupon fetching error"})
-		return
-	}
+	result, _ := fetchUsedCoupon(coupon.ID, user.ID, Init.DB)
 	if result != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Coupon already used"})
 		return
