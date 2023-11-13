@@ -60,9 +60,6 @@ func Home(c *gin.Context) {
 		rooms = append(rooms, hotelRooms...)
 	}
 	
-
-	c.JSON(200, gin.H{"Status": "Success"})
-	return
 	c.JSON(200, gin.H{"Hotels": hotels, "Rooms": rooms, "Banners": banners})
 }
 

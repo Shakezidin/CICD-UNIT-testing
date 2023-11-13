@@ -61,7 +61,7 @@ type Hotels struct {
 
 func (hotel *Hotels) FetchHotels(cityORhotelname string, isAvailab, isBlock, adminApproval bool, skip, limit int, db *gorm.DB) ([]Hotels, error) {
 	var hotels []Hotels
-	if err := db.Preload("HotelCategory").Offset(skip).Limit(limit).Where("(city ILIKE ? OR hotel_name ILIKE ?) AND is_available = ? AND is_block = ? AND admin_approval = ?", "%"+cityORhotelname+"%", "%"+cityORhotelname+"%", isAvailab, isBlock, adminApproval).Find(&hotels).Error; err != nil {
+	if err := db.Preload("HotelCategory").Offset(skip).Limit(limit).Where("(city ILIKE ? OR name ILIKE ?) AND is_available = ? AND is_block = ? AND admin_approval = ?", "%"+cityORhotelname+"%", "%"+cityORhotelname+"%", isAvailab, isBlock, adminApproval).Find(&hotels).Error; err != nil {
 		return nil, err
 	}
 	return hotels, nil
