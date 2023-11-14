@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	updateUser     = models.UpdateUSer
-	userr          = &models.User{}
-	checkPasswordd = userr.CheckPassword
-	booking        = models.Booking{}
-	history        = booking.FetchHistory
+	updateUser              = models.UpdateUSer
+	userr                   = &models.User{}
+	checkPasswordd          = userr.CheckPassword
+	booking                 = models.Booking{}
+	history                 = booking.FetchHistory
+	fetchUserByRefferalCode = userr.FetchUserByRefferalCode
 )
 
 // Profile handles user profile retrieval.
@@ -33,7 +34,7 @@ func Profile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"Status": "Success","User":user})
+	c.JSON(200, gin.H{"Status": "Success", "User": user})
 }
 
 // ProfileEdit handles editing user profile.

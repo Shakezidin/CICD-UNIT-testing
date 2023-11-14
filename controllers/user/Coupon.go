@@ -12,17 +12,17 @@ import (
 )
 
 var (
-	Couponref       = models.Coupon{}
-	usedcouponref   = models.UsedCoupon{}
-	walletref       = models.Wallet{}
-	transaction     = models.Transaction{}
-	fetchAllCoupon  = Couponref.FetchAllCoupon
-	fetchCouponById = Couponref.FetchCouponById
-	fetchUsedCoupon = usedcouponref.FetchUsedCoupon
-	fetchWallet     = walletref.FetchWallet
-	fetchWalletByID = walletref.FetchWalletById
-	saveWallet      = walletref.SaveWallet
-	createwallet          = transaction.Create
+	Couponref         = models.Coupon{}
+	usedcouponref     = models.UsedCoupon{}
+	walletref         = models.Wallet{}
+	transaction       = models.Transaction{}
+	fetchAllCoupon    = Couponref.FetchAllCoupon
+	fetchCouponById   = Couponref.FetchCouponById
+	fetchUsedCoupon   = usedcouponref.FetchUsedCoupon
+	fetchWallet       = walletref.FetchWallet
+	fetchWalletByID   = walletref.FetchWalletById
+	saveWallet        = walletref.SaveWallet
+	createtransaction = transaction.Create
 )
 
 // CalculateAmountForDays calculates the amount for booking based on selected dates and room.
@@ -280,13 +280,12 @@ func ApplyWallet(c *gin.Context) {
 		return
 	}
 
-
 	transaction.Date = time.Now()
 	transaction.Details = "Booked room in"
 	transaction.Amount = amount
 	transaction.UserID = wallet.UserID
 
-	errrr := createwallet(Init.DB)
+	errrr := createtransaction(Init.DB)
 	if errrr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "transaction adding error"})
 		return

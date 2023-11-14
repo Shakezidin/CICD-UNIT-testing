@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"math/big"
 	"net/http"
 	"net/smtp"
@@ -54,7 +53,6 @@ func VerifyOTP(superkey, otpInput string, c *gin.Context) bool {
 	// OTP verification in Redis
 	otp, err := initializer.ReddisClient.Get(context.Background(), superkey).Result()
 	if err != nil {
-		fmt.Println("***************************************************",superkey)
 		c.JSON(http.StatusUnauthorized, gin.H{"status": "false", "error": "Error retrieving data from Redis"})
 		return false
 	}

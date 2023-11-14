@@ -220,7 +220,7 @@ func TestApplyWallet(t *testing.T) {
 		setRedis = func(key string, value any, expirationTime time.Duration) error {
 			return nil
 		}
-		createwallet = func(db *gorm.DB) error {
+		createtransaction = func(db *gorm.DB) error {
 			return nil
 		}
 		gin.SetMode(gin.TestMode)

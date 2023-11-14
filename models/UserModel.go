@@ -20,12 +20,14 @@ type User struct {
 	JoinedAt     time.Time `json:"joined_at" gorm:"default:now()"`
 }
 
-// func (user *User) CreateUser(db *gorm.DB) error {
-// 	if err := db.Create(&user); err != nil {
-// 		return err.Error
-// 	}
-// 	return nil
-// }
+func (user *User) FetchUserByRefferalCode(referalCode string, db *gorm.DB) (User, error) {
+	var userr User
+	result := db.Where("referral_code = ?", referalCode).First(&user)
+	if result.Error != nil {
+		return userr, result.Error
+	}
+	return userr, nil
+}
 
 func (user *User) CreateUser(userr *User, db *gorm.DB) error {
 	result := db.Create(&userr)
@@ -63,6 +65,20 @@ type Wallet struct {
 	gorm.Model
 	Balance float64
 	UserID  uint `gorm:"unique"`
+}
+
+func (wallet *Wallet) Updatewallet(db *gorm.DB) error {
+	result := db.Save(&wallet)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+func (wallet *Wallet) FetchUserwalletById(Id uint, db *gorm.DB) (*Wallet, error) {
+	if err := db.Where("user_id = ?", Id).First(&wallet).Error; err != nil {
+		return wallet, err
+	}
+	return wallet, nil
 }
 
 // Transaction represents a financial transaction.

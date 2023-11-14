@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"net/http"
 	"time"
@@ -11,6 +12,7 @@ import (
 	controllers "github.com/shaikhzidhin/controllers/Otp"
 	Init "github.com/shaikhzidhin/initializer"
 	"github.com/shaikhzidhin/models"
+	"gorm.io/gorm"
 )
 
 var validate = validator.New()
@@ -28,11 +30,13 @@ func generateRandomString(length int) string {
 }
 
 var (
-	setRedis  = Init.SetRedis
-	getOtp    = controllers.GetOTP
-	verifyOtp = controllers.VerifyOTP
-	getRedis  = Init.GetRedis
-	create    = user.CreateUser
+	setRedis            = Init.SetRedis
+	getOtp              = controllers.GetOTP
+	verifyOtp           = controllers.VerifyOTP
+	getRedis            = Init.GetRedis
+	create              = user.CreateUser
+	fetchUserwalletById = walletref.FetchUserwalletById
+	updatewallet        = walletref.Updatewallet
 )
 
 // Signup for user signup
@@ -40,31 +44,29 @@ func Signup(c *gin.Context) {
 	var user models.User
 
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"Message": "binding error",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"Message": "binding error"})
 		c.Abort()
 		return
 	}
 	validationErr := validate.Struct(user)
 	if validationErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "validation error1"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "validation error"})
 		return
 	}
 
-	// if user.ReferralCode != "" {
-	// 	var referredUser models.User
-	// 	result := Init.DB.Where("referral_code = ?", user.ReferralCode).First(&referredUser)
-	// 	if result.Error != nil {
-	// 		c.JSON(http.StatusBadRequest, gin.H{"error": "user not found in this referral code"})
-	// 		return
-	// 	}
-	// 	user.Wallet.Balance += 50
-	// }
+	if user.ReferralCode != "" {
+		referreduser, err := fetchUserByRefferalCode(user.ReferralCode, Init.DB)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user not found in this referral code"})
+			c.Abort()
+			return
+		}
+		referreduser.Wallet.Balance += 50
+	}
 
 	if err := user.HashPassword(user.Password); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"msg": "hashing error",
+			"error": "hashing error",
 		})
 		c.Abort()
 		return
@@ -107,7 +109,7 @@ func SignupVerification(c *gin.Context) {
 		superKey := "userData" + otpCred.Email
 		jsonData, err := getRedis(superKey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "falseee", "error": "Error getting user data from Redis client"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "false", "error": "Error getting user data from Redis client"})
 			return
 		}
 		err = json.Unmarshal([]byte(jsonData), &userData)
@@ -129,38 +131,43 @@ func SignupVerification(c *gin.Context) {
 			return
 		}
 
-		var referredUser models.User
-
-		if err := Init.DB.Where("referral_code = ?", userData.ReferralCode).First(&referredUser).Error; err != nil {
+		referredUser, err := fetchUserByRefferalCode(userData.ReferralCode, Init.DB)
+		if err != nil {
 			c.JSON(400, gin.H{"Error": "Error while fetching user"})
 			return
 		}
 		// Update referred user's wallet balance
-		var wallet models.Wallet
-		if err := Init.DB.Where("user_id = ?", referredUser.ID).First(&wallet).Error; err != nil {
-			wallet = models.Wallet{
+		wallet, err := fetchUserwalletById(referredUser.ID, Init.DB)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			// Handle unexpected errors
+			c.JSON(500, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+
+		if wallet == nil {
+			wallet = &models.Wallet{
 				Balance: 0,
 				UserID:  referredUser.ID,
 			}
 		} else {
 			wallet.Balance += 100
-			var transaction models.Transaction
+			var transaction *models.Transaction
 
 			transaction.Amount = 100
 			transaction.UserID = referredUser.ID
-			transaction.Details = "Invite bonuse added"
+			transaction.Details = "Invite bonus added"
 			transaction.Date = time.Now()
 
-			if err := Init.DB.Create(&transaction).Error; err != nil {
+			if err := createtransaction(Init.DB).Error; err != nil {
 				c.JSON(400, gin.H{"Error": "Error while creating transaction"})
 				return
 			}
 		}
 
 		// Save or update the wallet entry
-		result := Init.DB.Save(&wallet)
-		if result.Error != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "falsee", "Error": result.Error})
+		errr := updatewallet(Init.DB)
+		if errr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "falsee", "Error": err})
 			return
 		}
 
@@ -170,7 +177,7 @@ func SignupVerification(c *gin.Context) {
 		// Create user and save transaction history and wallet balance
 		results := Init.DB.Create(&userData)
 		if results.Error != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "falsee", "Error": result.Error})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "falsee", "Error": ""})
 			return
 		}
 
