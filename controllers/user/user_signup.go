@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"time"
@@ -150,19 +151,22 @@ func SignupVerification(c *gin.Context) {
 				UserID:  referredUser.ID,
 			}
 		} else {
+
 			wallet.Balance += 100
-			var transaction *models.Transaction
+			var transaction models.Transaction
 
 			transaction.Amount = 100
 			transaction.UserID = referredUser.ID
 			transaction.Details = "Invite bonus added"
 			transaction.Date = time.Now()
 
+			fmt.Println("heeeeeeeeeeeeeeeeeeeeee")
 			if err := createtransaction(Init.DB).Error; err != nil {
 				c.JSON(400, gin.H{"Error": "Error while creating transaction"})
 				return
 			}
 		}
+		fmt.Println("helooooooooooooooooooooooooooo")
 
 		// Save or update the wallet entry
 		errr := updatewallet(Init.DB)
@@ -174,21 +178,21 @@ func SignupVerification(c *gin.Context) {
 		// Generate a new referral code for the current user
 		userData.ReferralCode = generateRandomString(10)
 
+
 		// Create user and save transaction history and wallet balance
-		results := Init.DB.Create(&userData)
-		if results.Error != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "falsee", "Error": ""})
+		errrr := create(&userData, Init.DB)
+		if errrr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "falsee", "Error": errrr})
 			return
 		}
 
-		var transaction models.Transaction
-
+		// var transaction models.Transaction
 		transaction.Amount = 50
 		transaction.UserID = userData.ID
 		transaction.Details = "referal bonuse added"
 		transaction.Date = time.Now()
 
-		if err := Init.DB.Create(&transaction).Error; err != nil {
+		if err := createtransaction(Init.DB).Error; err != nil {
 			c.JSON(400, gin.H{"Error": "Error while creating transaction"})
 			return
 		}

@@ -253,12 +253,12 @@ func TestSignupVerification(t *testing.T) {
 }
 
 // var user models.User
-// 				user.ReferralCode="helloo"
-// 				userData,err:=json.Marshal(user)
-// 				if err != nil {
-// 					return "", err
-// 				}
-// 				return string(userData), nil
+// user.ReferralCode="helloo"
+// userData,err:=json.Marshal(user)
+// if err != nil {
+// 	return "", err
+// }
+// return string(userData), nil
 
 func TestSingupVerificetionError(t *testing.T) {
 	type temp struct {
@@ -283,6 +283,13 @@ func TestSingupVerificetionError(t *testing.T) {
 		}
 		getRedis = func(key string) (string, error) {
 			return "", errors.New("mocked error")
+			// var user models.User
+			// user.ReferralCode = "helloo"
+			// userData, err := json.Marshal(user)
+			// if err != nil {
+			// 	return "", err
+			// }
+			// return string(userData), nil
 		}
 		gin.SetMode("test")
 		engine := gin.Default()
@@ -325,6 +332,76 @@ func TestSingupVerificetionError2(t *testing.T) {
 	t.Run(tc.name, func(t *testing.T) {
 		verifyOtp = func(superkey, otpInput string, c *gin.Context) bool {
 			return false
+		}
+		gin.SetMode("test")
+		engine := gin.Default()
+		RegisterUserRoutes(engine)
+		w := httptest.NewRecorder()
+		body, err := json.Marshal(tc.body)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		r := strings.NewReader(string(body))
+		req, err := http.NewRequest(http.MethodPost, tc.route, r)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		engine.ServeHTTP(w, req)
+		errdata, err := json.Marshal(tc.errorResult)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		require.JSONEq(t, w.Body.String(), string(errdata))
+	})
+}
+
+func TestSingupVerificetionError3(t *testing.T) {
+	type temp struct {
+		name        string
+		body        models.OtpCredentials
+		route       string
+		errorResult map[string]string
+	}
+
+	tc := temp{
+		name: "getFrom redis Error",
+		body: models.OtpCredentials{
+			Email: "sinuzidin@gmail.com",
+			Otp:   "1090",
+		},
+		route:       "/user/signup/verification",
+		errorResult: map[string]string{"status": "false", "error": "Error getting user data from Redis client"},
+	}
+	t.Run(tc.name, func(t *testing.T) {
+		verifyOtp = func(superkey, otpInput string, c *gin.Context) bool {
+			return true
+		}
+		fetchUserByRefferalCode = func(referalCode string, db *gorm.DB) (models.User, error) {
+			return user, nil
+		}
+		fetchUserwalletById = func(Id uint, db *gorm.DB) (*models.Wallet, error) {
+			return &walletref, nil
+		}
+		createtransaction = func(db *gorm.DB) error {
+			return nil
+		}
+		updatewallet=func(db *gorm.DB) error {
+			return nil
+		}
+		create=func(userr *models.User, db *gorm.DB) error {
+			return nil
+		}
+		createtransaction=func(db *gorm.DB) error {
+			return nil
+		}
+		getRedis = func(key string) (string, error) {
+			var user models.User
+			user.ReferralCode = "helloo"
+			userData, err := json.Marshal(user)
+			if err != nil {
+				return "", err
+			}
+			return string(userData), nil
 		}
 		gin.SetMode("test")
 		engine := gin.Default()
